@@ -5,8 +5,8 @@ import pandas as pd
 import plotly.express as px
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
-from surprise import Dataset, Reader, SVD
-from surprise.model_selection import train_test_split
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.ensemble import RandomForestClassifier
 
 # Custom background styling
 page_bg_img = """
@@ -68,21 +68,25 @@ if section == "Customer Segmentation":
 elif section == "Recommendations":
     st.title("🤖 Personalized Offer Recommendations")
 
-    reader = Reader(rating_scale=(0, 1))
-    data = Dataset.load_from_df(offers[['customer_id', 'offer_id', 'redeemed']], reader)
-    trainset, testset = train_test_split(data, test_size=0.2)
-    algo = SVD()
-    algo.fit(trainset)
+    # Create a pivot table for offers
+    pivot = offers.pivot_table(index='customer_id', columns='offer_id', values='redeemed', fill_value=0)
+    
+    # Compute similarity between customers
+    similarity = cosine_similarity(pivot)
+    similarity_df = pd.DataFrame(similarity, index=pivot.index, columns=pivot.index)
 
-    customer_list = offers['customer_id'].unique().tolist()
-    selected_customer = st.selectbox("Select a Customer", customer_list)
-    offer_list = offers['offer_id'].unique()
-    recommendations = [(offer, algo.predict(selected_customer, offer).est) for offer in offer_list]
-    top_offers = sorted(recommendations, key=lambda x: x[1], reverse=True)[:5]
+    selected_customer = st.selectbox("Select a Customer", pivot.index)
 
-    st.subheader("Top 5 Recommended Offers")
-    for offer, score in top_offers:
-        st.write(f"Offer {offer} with score {score:.2f}")
+    # Find top similar customers
+    sim_scores = similarity_df[selected_customer].sort_values(ascending=False)[1:6]
+    top_customers = sim_scores.index
+
+    # Aggregate offer scores from top customers
+    recommended_scores = pivot.loc[top_customers].mean().sort_values(ascending=False)
+
+    st.subheader("Top 5 Recommended Offers (Based on Similar Customers)")
+    for offer_id, score in recommended_scores.head(5).items():
+        st.write(f"Offer {offer_id} - estimated interest score: {score:.2f}")
 
 # --- Section 3: Loyalty Program Analysis --- #
 elif section == "Loyalty Analysis":
@@ -102,8 +106,6 @@ elif section == "Loyalty Analysis":
 # --- Section 4: Simulated Campaign --- #
 elif section == "Simulated Campaign":
     st.title("📬 Offer Campaign Simulator")
-
-    from sklearn.ensemble import RandomForestClassifier
 
     snapshot_date = transactions['transaction_date'].max() + pd.Timedelta(days=1)
     rfm = transactions.groupby('customer_id').agg({
