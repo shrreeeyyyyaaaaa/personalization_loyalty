@@ -6,19 +6,19 @@ import plotly.express as px
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.ensemble import RandomForestClassifier
 
 # Custom background styling
 page_bg_img = """
 <style>
 [data-testid="stAppViewContainer"] > .main {
-    background: linear-gradient(to right, #fdfbfb, #ebedee);
+    background-image: url("https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=1350&q=80");
+    background-size: cover;
 }
 [data-testid="stHeader"] {
-    background: rgba(0,0,0,0);
+    background: rgba(255, 255, 255, 0.8);
 }
 [data-testid="stSidebar"] {
-    background: #f8f9fa;
+    background: rgba(255, 255, 255, 0.9);
 }
 </style>
 """
@@ -40,7 +40,7 @@ offers = offers.merge(loyalty, on='customer_id', how='left')
 
 # Sidebar Navigation
 st.sidebar.title("🔍 Loyalty Optimization Tool")
-section = st.sidebar.radio("Go to", ["Customer Segmentation", "Recommendations", "Loyalty Analysis", "Simulated Campaign"])
+section = st.sidebar.radio("Go to", ["Customer Segmentation", "Recommendations", "Loyalty Analysis"])
 
 # --- Section 1: Customer Segmentation --- #
 if section == "Customer Segmentation":
@@ -70,7 +70,7 @@ elif section == "Recommendations":
 
     # Create a pivot table for offers
     pivot = offers.pivot_table(index='customer_id', columns='offer_id', values='redeemed', fill_value=0)
-    
+
     # Compute similarity between customers
     similarity = cosine_similarity(pivot)
     similarity_df = pd.DataFrame(similarity, index=pivot.index, columns=pivot.index)
@@ -102,16 +102,3 @@ elif section == "Loyalty Analysis":
 
     fig = px.bar(loyalty_metrics.reset_index(), x='loyalty_member', y='Avg Spend', title="Average Spend by Loyalty Status")
     st.plotly_chart(fig)
-
-
-
-    model = RandomForestClassifier()
-    model.fit(rfm[['Recency', 'Frequency', 'Monetary']], rfm['redeemed'])
-
-    st.write("Simulate campaign for synthetic customer...")
-    recency = st.slider("Recency (days since last purchase)", 1, 365, 60)
-    frequency = st.slider("Frequency (no. of purchases)", 1, 50, 10)
-    monetary = st.slider("Monetary (total spend)", 10, 2000, 300)
-
-    prob = model.predict_proba([[recency, frequency, monetary]])[0][1]
-    st.metric("Predicted Redemption Probability", f"{prob:.2%}")
