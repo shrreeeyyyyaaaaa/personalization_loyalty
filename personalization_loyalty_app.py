@@ -103,18 +103,7 @@ elif section == "Loyalty Analysis":
     fig = px.bar(loyalty_metrics.reset_index(), x='loyalty_member', y='Avg Spend', title="Average Spend by Loyalty Status")
     st.plotly_chart(fig)
 
-# --- Section 4: Simulated Campaign --- #
-elif section == "Simulated Campaign":
-    st.title("📬 Offer Campaign Simulator")
 
-    snapshot_date = transactions['transaction_date'].max() + pd.Timedelta(days=1)
-    rfm = transactions.groupby('customer_id').agg({
-        'transaction_date': lambda x: (snapshot_date - x.max()).days,
-        'customer_id': 'count',
-        'amount': 'sum'
-    }).rename(columns={'transaction_date': 'Recency', 'customer_id': 'Frequency', 'amount': 'Monetary'})
-    rfm = rfm.reset_index().merge(offers.groupby('customer_id')['redeemed'].mean().reset_index(), on='customer_id', how='left')
-    rfm['redeemed'] = rfm['redeemed'].fillna(0)
 
     model = RandomForestClassifier()
     model.fit(rfm[['Recency', 'Frequency', 'Monetary']], rfm['redeemed'])
